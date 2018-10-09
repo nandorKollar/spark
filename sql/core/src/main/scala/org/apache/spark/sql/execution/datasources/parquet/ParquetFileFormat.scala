@@ -366,6 +366,8 @@ class ParquetFileFormat
           null)
 
       val sharedConf = broadcastedHadoopConf.value.value
+      val sessionLocalTz = DateTimeUtils.getTimeZone(
+        sharedConf.get(SQLConf.SESSION_LOCAL_TIMEZONE.key))
 
       lazy val footerFileMetaData =
         ParquetFileReader.readFooter(sharedConf, filePath, SKIP_ROW_GROUPS).getFileMetaData
@@ -373,7 +375,7 @@ class ParquetFileFormat
       val pushed = if (enableParquetFilterPushDown) {
         val parquetSchema = footerFileMetaData.getSchema
         val parquetFilters = new ParquetFilters(pushDownDate, pushDownTimestamp, pushDownDecimal,
-          pushDownStringStartWith, pushDownInFilterThreshold, isCaseSensitive)
+          pushDownStringStartWith, pushDownInFilterThreshold, isCaseSensitive, sessionLocalTz)
         filters
           // Collects all converted Parquet filter predicates. Notice that not all predicates can be
           // converted (`ParquetFilters.createFilter` returns an `Option`). That's why a `flatMap`
@@ -398,8 +400,6 @@ class ParquetFileFormat
         } else {
           None
         }
-      val sessionLocalTz = DateTimeUtils.getTimeZone(
-        sharedConf.get(SQLConf.SESSION_LOCAL_TIMEZONE.key))
 
       val attemptId = new TaskAttemptID(new TaskID(new JobID(), TaskType.MAP, 0), 0)
       val hadoopAttemptContext =
